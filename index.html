@@ -86,7 +86,7 @@
       div.setAttribute('id', `eval-${contador}`);
       div.innerHTML = `
         <div class="col-6">
-          <input type="text" class="form-control nota" placeholder="Nota 1" oninput="validarNota(this)" onblur="ajustarNota(this)">
+          <input type="tel" inputmode="decimal" class="form-control nota" placeholder="Nota ${contador}" oninput="validarNota(this)" onblur="ajustarNota(this)">
         </div>
         <div class="col-6">
           <input type="number" step="0.01" class="form-control peso" placeholder="Porcentaje ${contador}" value="${peso}" oninput="guardarDatos()">
@@ -107,28 +107,37 @@
 
     // --- Convertir 68 → 6.8 automáticamente ---
    // Permite escribir libremente (con o sin punto)
+// Permite escribir libremente (solo números, puntos o comas)
 function validarNota(input) {
-  input.value = input.value.replace(/[^0-9.,]/g, ''); // solo números, puntos o comas
+  input.value = input.value.replace(/[^0-9.,]/g, '');
 }
 
-// Al salir del campo, convierte "68" → "6.8" si no hay punto
+// Convierte al formato correcto cuando el usuario termina (blur o calcular)
 function ajustarNota(input) {
-  let valor = input.value.replace(',', '.');
+  let valor = input.value.trim().replace(',', '.');
   if (valor === '') return;
 
-  // Si es un número entero con más de 1 dígito (ej: 68)
+  // Si tiene más de un dígito y no hay punto (ej: 68 → 6.8)
   if (!valor.includes('.') && valor.length > 1) {
     valor = (parseInt(valor) / 10).toFixed(1);
   }
 
   let numero = parseFloat(valor);
+
+  // Si el usuario escribió solo 6 → interpretarlo como 6.0
+  if (!isNaN(numero) && valor.length === 1) {
+    numero = numero;
+  }
+
+  // Validaciones de límites
   if (isNaN(numero)) numero = '';
-  if (numero > 7) numero = 7.0;
-  if (numero < 1 && numero !== '') numero = 1.0;
+  else if (numero > 7) numero = 7.0;
+  else if (numero < 1) numero = 1.0;
 
   input.value = numero ? numero.toFixed(1) : '';
   guardarDatos();
 }
+
 
 
     // --- Calcular nota necesaria ---
