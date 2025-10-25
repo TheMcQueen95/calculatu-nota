@@ -86,7 +86,7 @@
       div.setAttribute('id', `eval-${contador}`);
       div.innerHTML = `
         <div class="col-6">
-          <input type="text" class="form-control nota" placeholder="Nota ${contador}" value="${nota}" oninput="formatearNota(this); guardarDatos();">
+          <input type="text" class="form-control nota" placeholder="Nota 1" oninput="validarNota(this)" onblur="ajustarNota(this)">
         </div>
         <div class="col-6">
           <input type="number" step="0.01" class="form-control peso" placeholder="Porcentaje ${contador}" value="${peso}" oninput="guardarDatos()">
@@ -106,16 +106,30 @@
     }
 
     // --- Convertir 68 → 6.8 automáticamente ---
-    function formatearNota(input) {
-      const valor = input.value.replace(/[^0-9]/g, ''); // solo números
-      if (valor === '') {
-        input.value = '';
-        return;
-      }
-      let numero = parseInt(valor);
-      if (numero > 70) numero = 70; // no más de 7.0
-      input.value = (numero / 10).toFixed(1);
-    }
+   // Permite escribir libremente (con o sin punto)
+function validarNota(input) {
+  input.value = input.value.replace(/[^0-9.,]/g, ''); // solo números, puntos o comas
+}
+
+// Al salir del campo, convierte "68" → "6.8" si no hay punto
+function ajustarNota(input) {
+  let valor = input.value.replace(',', '.');
+  if (valor === '') return;
+
+  // Si es un número entero con más de 1 dígito (ej: 68)
+  if (!valor.includes('.') && valor.length > 1) {
+    valor = (parseInt(valor) / 10).toFixed(1);
+  }
+
+  let numero = parseFloat(valor);
+  if (isNaN(numero)) numero = '';
+  if (numero > 7) numero = 7.0;
+  if (numero < 1 && numero !== '') numero = 1.0;
+
+  input.value = numero ? numero.toFixed(1) : '';
+  guardarDatos();
+}
+
 
     // --- Calcular nota necesaria ---
     function calcular() {
