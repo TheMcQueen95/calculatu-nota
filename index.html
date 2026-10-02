@@ -36,10 +36,18 @@
       flex: 1 1 12rem;
       min-width: 0;
     }
+    .evaluation-field {
+      width: 50%;
+    }
+    @media (max-width: 374.98px) {
+      .evaluation-field {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container py-5">
+  <div class="container pt-1 pb-5">
     <div class="card p-4 mx-auto" style="max-width: 700px;">
       <h2 class="text-center mb-4">📘 Calcula tu Nota</h2>
       <section class="mb-4" aria-labelledby="tituloRamos">
@@ -273,15 +281,15 @@
       div.classList.add('row', 'g-2', 'mb-2');
       div.setAttribute('id', `eval-${contador}`);
       div.innerHTML = `
-        <div class="col-12 col-sm-6">
+        <div class="col-6 evaluation-field">
           <label class="form-label visually-hidden" for="nota-${contador}">Nota o escenario de evaluación ${contador}</label>
           <div class="input-group">
             <input type="tel" inputmode="decimal" id="nota-${contador}" class="form-control nota" placeholder="Nota / escenario ${contador}" oninput="validarNota(this); guardarDatos(); actualizarCalculos()" onblur="ajustarNota(this)">
-            <button type="button" class="btn btn-outline-secondary" title="Limpiar nota" aria-label="Limpiar nota de la evaluación ${contador}" onclick="limpiarNota(${contador})">×</button>
-            <button type="button" class="btn btn-outline-secondary" title="Asignar nota 1.0" aria-label="Asignar nota 1.0 a la evaluación ${contador}" onclick="simularMinimo(${contador})">1.0</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" title="Limpiar nota" aria-label="Limpiar nota de la evaluación ${contador}" onclick="limpiarNota(${contador})">×</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" title="Asignar nota 1.0" aria-label="Asignar nota 1.0 a la evaluación ${contador}" onclick="simularMinimo(${contador})">1</button>
           </div>
         </div>
-        <div class="col-12 col-sm-6">
+        <div class="col-6 evaluation-field">
           <label class="form-label visually-hidden" for="peso-${contador}">Porcentaje de evaluación ${contador}</label>
           <div class="input-group">
             <button type="button" class="btn btn-outline-secondary btn-sm" title="Restar 5%" aria-label="Restar 5% a la evaluación ${contador}" onclick="ajustarPeso(${contador}, -5)">−</button>
