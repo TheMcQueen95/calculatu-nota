@@ -6,13 +6,102 @@
   <title>Calcula tu Nota</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
+    :root {
+      --page-background: #f2f4f8;
+      --page-text: #20242c;
+      --card-background: #ffffff;
+      --card-border: #e2e5eb;
+      --surface-background: #f6f7fa;
+      --accent: #b28b12;
+      --accent-contrast: #171717;
+      --input-background: #ffffff;
+      --input-border: #ced4da;
+      --muted-text: #6c757d;
+    }
+    [data-bs-theme="dark"] {
+      --page-background: #171719;
+      --page-text: #f2f2f3;
+      --card-background: #222225;
+      --card-border: #37373b;
+      --surface-background: #19191c;
+      --accent: #d7b633;
+      --accent-contrast: #151515;
+      --input-background: #151517;
+      --input-border: #39393e;
+      --muted-text: #a6a6ae;
+    }
     body {
-      background: linear-gradient(145deg, #eef4ff 0%, #f8f9fa 55%, #f2f7f4 100%);
+      background: var(--page-background);
+      color: var(--page-text);
       min-height: 100vh;
     }
     .card {
+      background: var(--card-background);
+      border: 1px solid var(--card-border);
       border-radius: 1rem;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.14);
+    }
+    .app-header {
+      position: relative;
+      padding: 0.25rem 3.25rem 0;
+    }
+    .app-title {
+      color: var(--accent);
+      font-size: 1.65rem;
+      font-weight: 800;
+      letter-spacing: 0.015em;
+    }
+    .settings-toggle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .settings-toggle:hover,
+    .settings-toggle:focus-visible {
+      color: var(--accent-contrast);
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .settings-panel {
+      background: var(--surface-background);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+    .settings-panel[hidden] {
+      display: none;
+    }
+    .form-control,
+    .form-select,
+    .input-group-text {
+      background-color: var(--input-background);
+      border-color: var(--input-border);
+      color: var(--page-text);
+    }
+    .form-control:focus,
+    .form-select:focus {
+      background-color: var(--input-background);
+      color: var(--page-text);
+    }
+    .form-control::placeholder {
+      color: var(--muted-text);
+    }
+    .text-muted,
+    .form-text {
+      color: var(--muted-text) !important;
+    }
+    .btn-outline-primary {
+      --bs-btn-color: var(--accent);
+      --bs-btn-border-color: var(--accent);
+      --bs-btn-hover-color: var(--accent-contrast);
+      --bs-btn-hover-bg: var(--accent);
+      --bs-btn-hover-border-color: var(--accent);
+    }
+    .settings-status {
+      min-height: 1.25rem;
+      color: var(--muted-text);
     }
     .result {
       font-size: 1.3rem;
@@ -21,6 +110,14 @@
     .section-title {
       font-size: 1.1rem;
       font-weight: 700;
+      color: var(--accent);
+    }
+    #evaluacionesContainer > .row {
+      background: var(--surface-background);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      margin-inline: 0;
+      padding: 0.5rem 0;
     }
     .subject-actions {
       display: flex;
@@ -49,7 +146,35 @@
 <body>
   <div class="container pt-1 pb-5">
     <div class="card p-4 mx-auto" style="max-width: 700px;">
-      <h2 class="text-center mb-4">📘 Calcula tu Nota</h2>
+      <header class="app-header mb-4">
+        <h1 class="app-title text-center mb-0">Calcula tu Nota</h1>
+        <button type="button" class="btn btn-outline-secondary settings-toggle" id="settingsToggle" aria-label="Abrir ajustes" aria-expanded="false" aria-controls="settingsPanel" onclick="alternarAjustes()">⚙</button>
+      </header>
+      <section class="settings-panel mb-4" id="settingsPanel" aria-labelledby="settingsTitle" hidden>
+        <h2 class="section-title mb-3" id="settingsTitle">Ajustes</h2>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label" for="notaMinima">Nota mínima</label>
+            <input type="number" step="0.1" class="form-control" id="notaMinima" value="1">
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="notaMaxima">Nota máxima</label>
+            <input type="number" step="0.1" class="form-control" id="notaMaxima" value="7">
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="notaAprobacion">Mínima para aprobar</label>
+            <input type="number" step="0.1" class="form-control" id="notaAprobacion" value="5">
+            <div class="form-text">Será la meta inicial de los ramos nuevos; cada ramo puede cambiarla.</div>
+          </div>
+          <div class="col-6 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-secondary w-100" id="themeToggle" onclick="alternarTema()">Tema claro</button>
+          </div>
+          <div class="col-12 d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-outline-primary" onclick="guardarAjustes()">Guardar ajustes</button>
+            <p class="settings-status small mb-0" id="settingsStatus" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
       <section class="mb-4" aria-labelledby="tituloRamos">
         <h3 class="section-title mb-2" id="tituloRamos">Mis ramos</h3>
         <label class="form-label" for="selectorRamos">Ramo seleccionado</label>
@@ -65,7 +190,7 @@
         <p class="form-text mb-0" id="estadoRamos" aria-live="polite">Los ramos se guardan en este navegador. Debe quedar al menos uno.</p>
       </section>
       <form id="formNotas">
-        <p class="text-muted">Ingresa las notas y porcentajes de cada evaluación. Las notas que dejes vacías se consideran pendientes; para simular que no entregaste una, ingresa 1.0. El resultado se actualiza automáticamente.</p>
+        <p class="text-muted">Ingresa las notas y porcentajes de cada evaluación. Las notas que dejes vacías se consideran pendientes; para simular que no entregaste una, usa el botón de nota mínima. El resultado se actualiza automáticamente.</p>
         <div id="evaluacionesContainer"></div>
 
         <div class="evaluation-actions mb-3">
@@ -79,7 +204,7 @@
         </div>
       </form>
 
-      <div class="mt-4 text-center">
+      <div class="mt-2 text-center">
         <p class="result mb-1" id="resultadoPromedio" aria-live="polite"></p>
         <p class="text-muted" id="detallePromedio"></p>
       </div>
@@ -92,15 +217,131 @@
     let ramoActivoId = null;
     const CLAVE_RAMOS = 'ramosNotasData';
     const CLAVE_ANTIGUA = 'notasData';
+    const CLAVE_AJUSTES = 'calculatuNotaSettings';
+    const ajustesPorDefecto = { notaMinima: 1, notaMaxima: 7, notaAprobacion: 5, tema: 'dark' };
+    let ajustes = { ...ajustesPorDefecto };
 
     window.onload = function() {
+      cargarAjustes();
       iniciarBibliotecaRamos();
     };
+
+    function cargarAjustes() {
+      try {
+        const ajustesGuardados = localStorage.getItem(CLAVE_AJUSTES);
+        if (ajustesGuardados) {
+          const datos = JSON.parse(ajustesGuardados);
+          const notaMinima = Number(datos.notaMinima);
+          const notaMaxima = Number(datos.notaMaxima);
+          const notaAprobacion = Number(datos.notaAprobacion);
+          if (
+            Number.isFinite(notaMinima) &&
+            Number.isFinite(notaMaxima) &&
+            Number.isFinite(notaAprobacion) &&
+            notaMinima < notaMaxima &&
+            notaAprobacion >= notaMinima &&
+            notaAprobacion <= notaMaxima
+          ) {
+            ajustes = {
+              notaMinima,
+              notaMaxima,
+              notaAprobacion,
+              tema: datos.tema === 'light' ? 'light' : 'dark'
+            };
+          }
+        }
+      } catch (error) {
+        console.error('No se pudieron cargar los ajustes guardados.', error);
+        document.getElementById('settingsStatus').textContent = 'No se pudieron cargar los ajustes guardados.';
+      }
+      document.getElementById('notaMinima').value = ajustes.notaMinima;
+      document.getElementById('notaMaxima').value = ajustes.notaMaxima;
+      document.getElementById('notaAprobacion').value = ajustes.notaAprobacion;
+      aplicarTema();
+      actualizarLimitesMeta();
+    }
+
+    function alternarAjustes() {
+      const panel = document.getElementById('settingsPanel');
+      const visible = panel.hidden;
+      panel.hidden = !visible;
+      document.getElementById('settingsToggle').setAttribute('aria-expanded', String(visible));
+    }
+
+    function guardarAjustes() {
+      const notaMinima = Number(document.getElementById('notaMinima').value);
+      const notaMaxima = Number(document.getElementById('notaMaxima').value);
+      const notaAprobacion = Number(document.getElementById('notaAprobacion').value);
+      const estado = document.getElementById('settingsStatus');
+      const valoresAjustes = ['notaMinima', 'notaMaxima', 'notaAprobacion'];
+      if (valoresAjustes.some(id => document.getElementById(id).value.trim() === '')) {
+        estado.textContent = 'Completa la nota mínima, la nota máxima y la mínima para aprobar.';
+        return;
+      }
+      if (![notaMinima, notaMaxima, notaAprobacion].every(Number.isFinite)) {
+        estado.textContent = 'Ingresa valores numéricos para los límites y la nota de aprobación.';
+        return;
+      }
+      if (notaMinima >= notaMaxima) {
+        estado.textContent = 'La nota máxima debe ser mayor que la nota mínima.';
+        return;
+      }
+      if (notaAprobacion < notaMinima || notaAprobacion > notaMaxima) {
+        estado.textContent = 'La nota mínima para aprobar debe estar entre la nota mínima y la máxima.';
+        return;
+      }
+
+      ajustes.notaMinima = notaMinima;
+      ajustes.notaMaxima = notaMaxima;
+      ajustes.notaAprobacion = notaAprobacion;
+      if (!guardarConfiguracion()) return;
+      actualizarLimitesMeta();
+      actualizarBotonesNotaMinima();
+      estado.textContent = 'Ajustes guardados. Las notas existentes fuera del rango se conservaron.';
+      actualizarCalculos();
+    }
+
+    function guardarConfiguracion() {
+      try {
+        localStorage.setItem(CLAVE_AJUSTES, JSON.stringify(ajustes));
+        return true;
+      } catch (error) {
+        console.error('No se pudieron guardar los ajustes.', error);
+        document.getElementById('settingsStatus').textContent =
+          'No se pudieron guardar los ajustes en el almacenamiento del navegador.';
+        return false;
+      }
+    }
+
+    function alternarTema() {
+      ajustes.tema = ajustes.tema === 'dark' ? 'light' : 'dark';
+      aplicarTema();
+      if (guardarConfiguracion()) {
+        document.getElementById('settingsStatus').textContent =
+          `Tema ${ajustes.tema === 'dark' ? 'oscuro' : 'claro'} activado.`;
+      }
+    }
+
+    function aplicarTema() {
+      document.documentElement.setAttribute('data-bs-theme', ajustes.tema);
+      document.getElementById('themeToggle').textContent =
+        ajustes.tema === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro';
+    }
+
+    function actualizarLimitesMeta() {
+      const notaObjetivo = document.getElementById('notaObjetivo');
+      notaObjetivo.min = ajustes.notaMinima;
+      notaObjetivo.max = ajustes.notaMaxima;
+    }
+
+    function formatearNota(nota) {
+      return nota.toLocaleString('es-CL', { maximumFractionDigits: 2 });
+    }
 
     function crearDatosIniciales() {
       return {
         evaluaciones: [15, 25, 30, 30].map(peso => ({ nota: '', peso: String(peso) })),
-        notaObjetivo: '5.0'
+        notaObjetivo: ajustes.notaAprobacion.toFixed(1)
       };
     }
 
@@ -118,7 +359,7 @@
             (evaluacion.peso === undefined || evaluacion.peso === null ? '' : String(evaluacion.peso))
         })),
         notaObjetivo: datos.notaObjetivo === undefined || datos.notaObjetivo === null
-          ? '5.0'
+          ? ajustes.notaAprobacion.toFixed(1)
           : String(datos.notaObjetivo)
       };
     }
@@ -218,6 +459,7 @@
       const datos = normalizarDatosRamo(ramo);
       datos.evaluaciones.forEach(evaluacion => agregarEvaluacion(evaluacion.nota, evaluacion.peso, false));
       document.getElementById('notaObjetivo').value = datos.notaObjetivo;
+      actualizarLimitesMeta();
       actualizarCalculos();
     }
 
@@ -282,11 +524,11 @@
       div.setAttribute('id', `eval-${contador}`);
       div.innerHTML = `
         <div class="col-6 evaluation-field">
-          <label class="form-label visually-hidden" for="nota-${contador}">Nota o escenario de evaluación ${contador}</label>
+          <label class="form-label visually-hidden" for="nota-${contador}">Nota de evaluación ${contador}</label>
           <div class="input-group">
-            <input type="tel" inputmode="decimal" id="nota-${contador}" class="form-control nota" placeholder="Nota / escenario ${contador}" oninput="validarNota(this); guardarDatos(); actualizarCalculos()" onblur="ajustarNota(this)">
+            <input type="tel" inputmode="decimal" id="nota-${contador}" class="form-control nota" placeholder="Nota ${contador}" oninput="validarNota(this); guardarDatos(); actualizarCalculos()" onblur="ajustarNota(this)">
             <button type="button" class="btn btn-outline-secondary btn-sm" title="Limpiar nota" aria-label="Limpiar nota de la evaluación ${contador}" onclick="limpiarNota(${contador})">×</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm" title="Asignar nota 1.0" aria-label="Asignar nota 1.0 a la evaluación ${contador}" onclick="simularMinimo(${contador})">1</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm nota-minima" onclick="simularMinimo(${contador})"></button>
           </div>
         </div>
         <div class="col-6 evaluation-field">
@@ -299,6 +541,7 @@
         </div>`;
       container.appendChild(div);
       if (nota !== undefined && nota !== null) div.querySelector('.nota').value = nota;
+      actualizarBotonesNotaMinima();
       if (guardar) {
         guardarDatos();
         actualizarCalculos();
@@ -308,9 +551,18 @@
     function simularMinimo(id) {
       const evaluacion = document.getElementById(`eval-${id}`);
       if (!evaluacion) return;
-      evaluacion.querySelector('.nota').value = '1.0';
+      evaluacion.querySelector('.nota').value = ajustes.notaMinima.toFixed(1);
       guardarDatos();
       actualizarCalculos();
+    }
+
+    function actualizarBotonesNotaMinima() {
+      document.querySelectorAll('.nota-minima').forEach(boton => {
+        const notaMinima = formatearNota(ajustes.notaMinima);
+        boton.textContent = notaMinima;
+        boton.title = `Asignar nota mínima ${notaMinima}`;
+        boton.setAttribute('aria-label', `Asignar nota mínima ${notaMinima} a la evaluación ${boton.closest('[id^="eval-"]').id.slice(5)}`);
+      });
     }
 
     function limpiarNota(id) {
@@ -359,24 +611,16 @@ function ajustarNota(input) {
     return;
   }
 
-  // Si tiene más de un dígito y no hay punto (ej: 68 → 6.8)
-  if (!valor.includes('.') && valor.length > 1) {
+  // Conserva atajos como 68 → 6.8 si el valor excede la nota máxima configurada.
+  if (!valor.includes('.') && valor.length > 1 && Number(valor) > ajustes.notaMaxima) {
     valor = (parseInt(valor) / 10).toFixed(1);
   }
 
   let numero = parseFloat(valor);
 
-  // Si el usuario escribió solo 6 → interpretarlo como 6.0
-  if (!isNaN(numero) && valor.length === 1) {
-    numero = numero;
-  }
-
-  // Validaciones de límites
   if (isNaN(numero)) numero = '';
-  else if (numero > 7) numero = 7.0;
-  else if (numero < 1) numero = 1.0;
 
-  input.value = numero ? numero.toFixed(1) : '';
+  input.value = Number.isFinite(numero) ? numero.toFixed(1) : '';
   guardarDatos();
   actualizarCalculos();
 }
@@ -396,15 +640,15 @@ function ajustarNota(input) {
         const peso = Number(pesosInputs[i].value);
         const nota = notasInputs[i].value.trim() === '' ? null : Number(notasInputs[i].value.replace(',', '.'));
         if (!Number.isFinite(peso) || peso <= 0) return { error: 'Ingresa un porcentaje mayor que 0 para cada evaluación.' };
-        if (nota !== null && (!Number.isFinite(nota) || nota < 1 || nota > 7)) {
-          return { error: 'Las notas deben estar entre 1.0 y 7.0.' };
+        if (nota !== null && (!Number.isFinite(nota) || nota < ajustes.notaMinima || nota > ajustes.notaMaxima)) {
+          return { error: `Las notas deben estar entre ${formatearNota(ajustes.notaMinima)} y ${formatearNota(ajustes.notaMaxima)}.` };
         }
         pesoTotal += peso;
         evaluaciones.push({ nota, peso: peso / 100 });
       }
 
-      if (!Number.isFinite(notaObjetivo) || notaObjetivo < 1 || notaObjetivo > 7) {
-        return { error: 'La nota objetivo debe estar entre 1.0 y 7.0.' };
+      if (!Number.isFinite(notaObjetivo) || notaObjetivo < ajustes.notaMinima || notaObjetivo > ajustes.notaMaxima) {
+        return { error: `La nota objetivo debe estar entre ${formatearNota(ajustes.notaMinima)} y ${formatearNota(ajustes.notaMaxima)}.` };
       }
       if (pesoTotal !== 100) {
         const totalFormateado = pesoTotal.toLocaleString('es-CL', { maximumFractionDigits: 10 });
@@ -466,12 +710,12 @@ function ajustarNota(input) {
     }
 
     function mostrarNotaNecesaria(resultado, detalle, notaNecesaria, contexto) {
-      if (notaNecesaria > 7) {
-        actualizarResultado(resultado, detalle, `Necesitarías un ${notaNecesaria.toFixed(2)}. No es posible alcanzar la nota objetivo con una nota máxima de 7.0.`, 'text-danger');
-        detalle.textContent = `Necesitarías esa nota ${contexto}, pero supera la nota máxima de 7.0.`;
-      } else if (notaNecesaria <= 1) {
-        actualizarResultado(resultado, detalle, 'Con un 1.0 ya alcanzas la nota objetivo. 🎉', 'text-success');
-        detalle.textContent = `Con un 1.0 ${contexto} ya alcanzas la nota objetivo.`;
+      if (notaNecesaria > ajustes.notaMaxima) {
+        actualizarResultado(resultado, detalle, `Necesitarías un ${notaNecesaria.toFixed(2)}. No es posible alcanzar la nota objetivo con una nota máxima de ${formatearNota(ajustes.notaMaxima)}.`, 'text-danger');
+        detalle.textContent = `Necesitarías esa nota ${contexto}, pero supera la nota máxima de ${formatearNota(ajustes.notaMaxima)}.`;
+      } else if (notaNecesaria <= ajustes.notaMinima) {
+        actualizarResultado(resultado, detalle, `Con un ${formatearNota(ajustes.notaMinima)} ya alcanzas la nota objetivo. 🎉`, 'text-success');
+        detalle.textContent = `Con un ${formatearNota(ajustes.notaMinima)} ${contexto} ya alcanzas la nota objetivo.`;
       } else {
         actualizarResultado(resultado, detalle, `Necesitas al menos un ${notaNecesaria.toFixed(2)}. 💪`, 'text-success');
         detalle.textContent = `Cálculo ${contexto}.`;
