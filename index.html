@@ -7,7 +7,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      background-color: #f8f9fa;
+      background: linear-gradient(145deg, #eef4ff 0%, #f8f9fa 55%, #f2f7f4 100%);
+      min-height: 100vh;
     }
     .card {
       border-radius: 1rem;
@@ -17,13 +18,37 @@
       font-size: 1.3rem;
       font-weight: bold;
     }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .subject-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
   </style>
 </head>
 <body>
   <div class="container py-5">
     <div class="card p-4 mx-auto" style="max-width: 700px;">
       <h2 class="text-center mb-4">📘 Calcula tu Nota</h2>
+      <section class="mb-4" aria-labelledby="tituloRamos">
+        <h3 class="section-title mb-2" id="tituloRamos">Mis ramos</h3>
+        <label class="form-label" for="selectorRamos">Ramo seleccionado</label>
+        <select class="form-select mb-2" id="selectorRamos" onchange="cambiarRamo(this.value)"></select>
+        <div class="input-group mb-2">
+          <input type="text" class="form-control" id="nombreRamo" maxlength="60" aria-label="Nombre del ramo">
+          <button type="button" class="btn btn-outline-primary" onclick="renombrarRamo()">Guardar nombre</button>
+        </div>
+        <div class="subject-actions">
+          <button type="button" class="btn btn-outline-success btn-sm" onclick="crearRamo()">➕ Nuevo ramo</button>
+          <button type="button" class="btn btn-outline-danger btn-sm" id="eliminarRamoBtn" onclick="eliminarRamo()">🗑️ Eliminar</button>
+        </div>
+        <p class="form-text mb-0" id="estadoRamos" aria-live="polite">Los ramos se guardan en este navegador. Debe quedar al menos uno.</p>
+      </section>
       <form id="formNotas">
+        <p class="text-muted">Ingresa las notas y porcentajes de cada evaluación. Las notas que dejes vacías se consideran pendientes; para simular que no entregaste una, ingresa 1.0. El resultado se actualiza automáticamente.</p>
         <div id="evaluacionesContainer"></div>
 
         <div class="d-flex justify-content-between mb-3">
@@ -33,38 +58,111 @@
 
         <div class="mb-3">
           <label class="form-label">Nota deseada para aprobar</label>
-          <input type="number" step="0.01" class="form-control" id="notaObjetivo" value="4.5" oninput="guardarDatos()">
+          <input type="number" step="0.01" class="form-control" id="notaObjetivo" value="5.0" oninput="guardarDatos(); actualizarCalculos()">
         </div>
-
-        <button type="button" class="btn btn-primary w-100" onclick="calcular()">Calcular Nota Necesaria</button>
       </form>
 
       <div class="mt-4 text-center">
-        <p class="result" id="resultado"></p>
+        <p class="result mb-1" id="resultadoPromedio" aria-live="polite"></p>
+        <p class="text-muted" id="detallePromedio"></p>
       </div>
     </div>
   </div>
 
   <script>
     let contador = 0;
+    let ramos = [];
+    let ramoActivoId = null;
+    const CLAVE_RAMOS = 'ramosNotasData';
+    const CLAVE_ANTIGUA = 'notasData';
 
-    // --- Cargar datos guardados al iniciar ---
     window.onload = function() {
-      const datosGuardados = JSON.parse(localStorage.getItem("notasData"));
-      if (datosGuardados && datosGuardados.evaluaciones.length > 0) {
-        datosGuardados.evaluaciones.forEach(e => agregarEvaluacion(e.nota, e.peso));
-        document.getElementById("notaObjetivo").value = datosGuardados.notaObjetivo;
-      } else {
-        for (let i = 0; i < 4; i++) agregarEvaluacion();
-      }
+      iniciarBibliotecaRamos();
     };
 
-    // --- Guardar datos en localStorage ---
+    function crearDatosIniciales() {
+      return {
+        evaluaciones: [15, 25, 30, 30].map(peso => ({ nota: '', peso: String(peso) })),
+        notaObjetivo: '5.0'
+      };
+    }
+
+    function normalizarDatosRamo(datos) {
+      if (!datos || !Array.isArray(datos.evaluaciones) || datos.evaluaciones.length === 0) {
+        return crearDatosIniciales();
+      }
+
+      const pesosVacios = datos.evaluaciones.length === 4 &&
+        datos.evaluaciones.every(e => e.peso === undefined || e.peso === '');
+      return {
+        evaluaciones: datos.evaluaciones.map((evaluacion, indice) => ({
+          nota: evaluacion.nota === undefined || evaluacion.nota === null ? '' : String(evaluacion.nota),
+          peso: pesosVacios ? String([15, 25, 30, 30][indice]) :
+            (evaluacion.peso === undefined || evaluacion.peso === null ? '' : String(evaluacion.peso))
+        })),
+        notaObjetivo: datos.notaObjetivo === undefined || datos.notaObjetivo === null
+          ? '5.0'
+          : String(datos.notaObjetivo)
+      };
+    }
+
+    function iniciarBibliotecaRamos() {
+      try {
+        const bibliotecaGuardada = localStorage.getItem(CLAVE_RAMOS);
+        if (bibliotecaGuardada) {
+          const biblioteca = JSON.parse(bibliotecaGuardada);
+          if (biblioteca && Array.isArray(biblioteca.ramos)) {
+            ramos = biblioteca.ramos
+              .filter(ramo => ramo && typeof ramo.id === 'string' && typeof ramo.nombre === 'string')
+              .map(ramo => ({ ...ramo, ...normalizarDatosRamo(ramo) }));
+            ramoActivoId = biblioteca.ramoActivoId;
+          }
+        }
+
+        if (ramos.length === 0) {
+          const datosAntiguos = localStorage.getItem(CLAVE_ANTIGUA);
+          const datosIniciales = datosAntiguos
+            ? normalizarDatosRamo(JSON.parse(datosAntiguos))
+            : crearDatosIniciales();
+          ramos = [{ id: crearIdRamo(), nombre: datosAntiguos ? 'Mi ramo' : 'Mi primer ramo', ...datosIniciales }];
+          ramoActivoId = ramos[0].id;
+        }
+
+        if (!ramos.some(ramo => ramo.id === ramoActivoId)) ramoActivoId = ramos[0].id;
+        actualizarSelectorRamos();
+        cargarRamoActivo();
+        guardarBiblioteca();
+      } catch (error) {
+        console.error('No se pudieron cargar los ramos guardados.', error);
+        document.getElementById('estadoRamos').textContent =
+          'No se pudieron cargar los ramos guardados. Revisa el almacenamiento local del navegador.';
+        ramos = [{ id: crearIdRamo(), nombre: 'Mi primer ramo', ...crearDatosIniciales() }];
+        ramoActivoId = ramos[0].id;
+        actualizarSelectorRamos();
+        cargarRamoActivo();
+      }
+    }
+
+    function crearIdRamo() {
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    function guardarBiblioteca() {
+      try {
+        localStorage.setItem(CLAVE_RAMOS, JSON.stringify({ ramoActivoId, ramos }));
+        document.getElementById('estadoRamos').textContent = 'Los ramos se guardan en este navegador.';
+      } catch (error) {
+        console.error('No se pudieron guardar los ramos.', error);
+        document.getElementById('estadoRamos').textContent =
+          'No se pudieron guardar los cambios. El almacenamiento del navegador podría estar lleno o deshabilitado.';
+      }
+    }
+
     function guardarDatos() {
+      if (!ramoActivoId) return;
       const notasInputs = document.querySelectorAll('.nota');
       const pesosInputs = document.querySelectorAll('.peso');
       const notaObjetivo = document.getElementById('notaObjetivo').value;
-
       const evaluaciones = [];
       for (let i = 0; i < notasInputs.length; i++) {
         evaluaciones.push({
@@ -73,12 +171,93 @@
         });
       }
 
-      const datos = { evaluaciones, notaObjetivo };
-      localStorage.setItem("notasData", JSON.stringify(datos));
+      const ramo = ramos.find(item => item.id === ramoActivoId);
+      if (!ramo) return;
+      ramo.evaluaciones = evaluaciones;
+      ramo.notaObjetivo = notaObjetivo;
+      guardarBiblioteca();
     }
 
-    // --- Agregar una evaluación ---
-    function agregarEvaluacion(nota = "", peso = "") {
+    function actualizarSelectorRamos() {
+      const selector = document.getElementById('selectorRamos');
+      selector.innerHTML = '';
+      ramos.forEach(ramo => {
+        const opcion = document.createElement('option');
+        opcion.value = ramo.id;
+        opcion.textContent = ramo.nombre;
+        selector.appendChild(opcion);
+      });
+      selector.value = ramoActivoId;
+      const ramoActivo = ramos.find(ramo => ramo.id === ramoActivoId);
+      document.getElementById('nombreRamo').value = ramoActivo ? ramoActivo.nombre : '';
+      document.getElementById('eliminarRamoBtn').disabled = ramos.length === 1;
+    }
+
+    function cargarRamoActivo() {
+      const ramo = ramos.find(item => item.id === ramoActivoId);
+      if (!ramo) return;
+      document.getElementById('evaluacionesContainer').innerHTML = '';
+      contador = 0;
+      const datos = normalizarDatosRamo(ramo);
+      datos.evaluaciones.forEach(evaluacion => agregarEvaluacion(evaluacion.nota, evaluacion.peso, false));
+      document.getElementById('notaObjetivo').value = datos.notaObjetivo;
+      actualizarCalculos();
+    }
+
+    function cambiarRamo(id) {
+      if (document.activeElement.matches('.nota')) document.activeElement.blur();
+      guardarDatos();
+      ramoActivoId = id;
+      actualizarSelectorRamos();
+      cargarRamoActivo();
+      guardarBiblioteca();
+    }
+
+    function crearRamo() {
+      guardarDatos();
+      let numero = 1;
+      while (ramos.some(ramo => ramo.nombre === `Ramo ${numero}`)) numero++;
+      const ramo = {
+        id: crearIdRamo(),
+        nombre: `Ramo ${numero}`,
+        ...crearDatosIniciales()
+      };
+      ramos.push(ramo);
+      ramoActivoId = ramo.id;
+      actualizarSelectorRamos();
+      cargarRamoActivo();
+      guardarBiblioteca();
+    }
+
+    function renombrarRamo() {
+      const ramo = ramos.find(item => item.id === ramoActivoId);
+      if (!ramo) return;
+      const nombreLimpio = document.getElementById('nombreRamo').value.trim();
+      if (!nombreLimpio) {
+        document.getElementById('estadoRamos').textContent = 'Escribe un nombre para el ramo antes de guardarlo.';
+        return;
+      }
+      if (ramos.some(item => item.id !== ramo.id && item.nombre.toLocaleLowerCase() === nombreLimpio.toLocaleLowerCase())) {
+        document.getElementById('estadoRamos').textContent = 'Ya existe un ramo con ese nombre.';
+        return;
+      }
+      ramo.nombre = nombreLimpio;
+      actualizarSelectorRamos();
+      guardarBiblioteca();
+    }
+
+    function eliminarRamo() {
+      if (ramos.length === 1) return;
+      const ramo = ramos.find(item => item.id === ramoActivoId);
+      if (!ramo || !confirm(`¿Eliminar "${ramo.nombre}" y sus notas? Esta acción no se puede deshacer.`)) return;
+      ramos = ramos.filter(item => item.id !== ramoActivoId);
+      ramoActivoId = ramos[0].id;
+      actualizarSelectorRamos();
+      cargarRamoActivo();
+      guardarBiblioteca();
+    }
+
+    function agregarEvaluacion(nota = '', peso = '', guardar = true) {
       contador++;
       const container = document.getElementById('evaluacionesContainer');
       const div = document.createElement('div');
@@ -86,13 +265,19 @@
       div.setAttribute('id', `eval-${contador}`);
       div.innerHTML = `
         <div class="col-6">
-          <input type="tel" inputmode="decimal" class="form-control nota" placeholder="Nota ${contador}" oninput="validarNota(this)" onblur="ajustarNota(this)">
+          <label class="form-label visually-hidden" for="nota-${contador}">Nota o escenario de evaluación ${contador}</label>
+          <input type="tel" inputmode="decimal" id="nota-${contador}" class="form-control nota" placeholder="Nota / escenario ${contador}" oninput="validarNota(this); guardarDatos(); actualizarCalculos()" onblur="ajustarNota(this)">
         </div>
         <div class="col-6">
-          <input type="number" step="0.01" class="form-control peso" placeholder="Porcentaje ${contador}" value="${peso}" oninput="guardarDatos()">
+          <label class="form-label visually-hidden" for="peso-${contador}">Porcentaje de evaluación ${contador}</label>
+          <input type="number" step="5" min="0" id="peso-${contador}" class="form-control peso" placeholder="Porcentaje ${contador}" value="${peso}" oninput="guardarDatos(); actualizarCalculos()">
         </div>`;
       container.appendChild(div);
-      guardarDatos();
+      if (nota !== undefined && nota !== null) div.querySelector('.nota').value = nota;
+      if (guardar) {
+        guardarDatos();
+        actualizarCalculos();
+      }
     }
 
     // --- Eliminar la última evaluación ---
@@ -102,6 +287,7 @@
         ultima.remove();
         contador--;
         guardarDatos();
+        actualizarCalculos();
       }
     }
 
@@ -115,7 +301,11 @@ function validarNota(input) {
 // Convierte al formato correcto cuando el usuario termina (blur o calcular)
 function ajustarNota(input) {
   let valor = input.value.trim().replace(',', '.');
-  if (valor === '') return;
+  if (valor === '') {
+    guardarDatos();
+    actualizarCalculos();
+    return;
+  }
 
   // Si tiene más de un dígito y no hay punto (ej: 68 → 6.8)
   if (!valor.includes('.') && valor.length > 1) {
@@ -136,52 +326,98 @@ function ajustarNota(input) {
 
   input.value = numero ? numero.toFixed(1) : '';
   guardarDatos();
+  actualizarCalculos();
 }
 
+    function actualizarCalculos() {
+      calcularPromedio();
+    }
 
-
-    // --- Calcular nota necesaria ---
-    function calcular() {
+    function obtenerDatosCalculo() {
       const notasInputs = document.querySelectorAll('.nota');
       const pesosInputs = document.querySelectorAll('.peso');
       const notaObjetivo = parseFloat(document.getElementById('notaObjetivo').value);
-      const resultado = document.getElementById('resultado');
+      const evaluaciones = [];
+      let pesoTotal = 0;
+
+      for (let i = 0; i < notasInputs.length; i++) {
+        const peso = Number(pesosInputs[i].value);
+        const nota = notasInputs[i].value.trim() === '' ? null : Number(notasInputs[i].value.replace(',', '.'));
+        if (!Number.isFinite(peso) || peso <= 0) return { error: 'Ingresa un porcentaje mayor que 0 para cada evaluación.' };
+        if (nota !== null && (!Number.isFinite(nota) || nota < 1 || nota > 7)) {
+          return { error: 'Las notas deben estar entre 1.0 y 7.0.' };
+        }
+        pesoTotal += peso;
+        evaluaciones.push({ nota, peso: peso / 100 });
+      }
+
+      if (!Number.isFinite(notaObjetivo) || notaObjetivo < 1 || notaObjetivo > 7) {
+        return { error: 'La nota objetivo debe estar entre 1.0 y 7.0.' };
+      }
+      if (Math.abs(pesoTotal - 100) > 0.01) {
+        return { error: `Los porcentajes suman ${pesoTotal.toFixed(2)}%. Deben sumar 100%.` };
+      }
+      return { evaluaciones, notaObjetivo };
+    }
+
+    function actualizarResultado(elemento, detalle, mensaje, tipo) {
+      elemento.textContent = mensaje;
+      elemento.classList.remove('text-success', 'text-danger', 'text-warning');
+      elemento.classList.add(tipo);
+      detalle.textContent = '';
+    }
+
+    function calcularPromedio() {
+      const resultado = document.getElementById('resultadoPromedio');
+      const detalle = document.getElementById('detallePromedio');
+      const datos = obtenerDatosCalculo();
+      if (datos.error) {
+        actualizarResultado(resultado, detalle, `⚠️ ${datos.error}`, 'text-warning');
+        return;
+      }
 
       let sumaNotas = 0;
       let pesoPendiente = 0;
+      datos.evaluaciones.forEach(evaluacion => {
+        if (evaluacion.nota === null) pesoPendiente += evaluacion.peso;
+        else sumaNotas += evaluacion.nota * evaluacion.peso;
+      });
 
-      for (let i = 0; i < notasInputs.length; i++) {
-        const nota = notasInputs[i].value ? parseFloat(notasInputs[i].value) : null;
-        const peso = pesosInputs[i].value ? parseFloat(pesosInputs[i].value) / 100 : 0;
-
-        if (nota !== null && !isNaN(nota)) {
-          sumaNotas += nota * peso;
-        } else {
-          pesoPendiente += peso;
-        }
+      if (pesoPendiente === 0) {
+        const promedioActual = sumaNotas;
+        const alcanzaObjetivo = promedioActual >= datos.notaObjetivo;
+        actualizarResultado(
+          resultado,
+          detalle,
+          `Tu promedio actual es ${promedioActual.toFixed(2)}.`,
+          alcanzaObjetivo ? 'text-success' : 'text-danger'
+        );
+        detalle.textContent = alcanzaObjetivo
+          ? `¡Alcanzas la nota objetivo de ${datos.notaObjetivo.toFixed(2)}! 🎉`
+          : `Aún no alcanzas la nota objetivo de ${datos.notaObjetivo.toFixed(2)}.`;
+        guardarDatos();
+        return;
       }
-
-      const notaNecesaria = (notaObjetivo - sumaNotas) / pesoPendiente;
-
-      if (isNaN(notaNecesaria) || pesoPendiente === 0) {
-        resultado.textContent = "⚠️ Verifica los datos ingresados (faltan porcentajes o todos los campos están completos).";
-        resultado.classList.remove('text-success', 'text-danger');
-      } else if (notaNecesaria > 7) {
-        resultado.textContent = `Necesitas un ${notaNecesaria.toFixed(2)} 😢 — No es posible alcanzar la nota objetivo.`;
-        resultado.classList.add('text-danger');
-        resultado.classList.remove('text-success');
-      } else if (notaNecesaria < 1) {
-        resultado.textContent = `Con tus notas actuales ya pasas 🎉`;
-        resultado.classList.add('text-success');
-        resultado.classList.remove('text-danger');
-      } else {
-        resultado.textContent = `Necesitas al menos un ${notaNecesaria.toFixed(2)} en la(s) evaluación(es) faltante(s). 💪`;
-        resultado.classList.add('text-success');
-        resultado.classList.remove('text-danger');
-      }
-
+      mostrarNotaNecesaria(
+        resultado,
+        detalle,
+        (datos.notaObjetivo - sumaNotas) / pesoPendiente,
+        'en promedio en cada evaluación pendiente'
+      );
       guardarDatos();
     }
+
+    function mostrarNotaNecesaria(resultado, detalle, notaNecesaria, contexto) {
+      if (notaNecesaria > 7) {
+        actualizarResultado(resultado, detalle, `Necesitarías un ${notaNecesaria.toFixed(2)}. No es posible alcanzar la nota objetivo con una nota máxima de 7.0.`, 'text-danger');
+      } else if (notaNecesaria <= 1) {
+        actualizarResultado(resultado, detalle, 'Con un 1.0 ya alcanzas la nota objetivo. 🎉', 'text-success');
+      } else {
+        actualizarResultado(resultado, detalle, `Necesitas al menos un ${notaNecesaria.toFixed(2)}. 💪`, 'text-success');
+      }
+      detalle.textContent = `Cálculo ${contexto}.`;
+    }
+
   </script>
 </body>
 </html>
