@@ -27,6 +27,15 @@
       flex-wrap: wrap;
       gap: 0.5rem;
     }
+    .evaluation-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .evaluation-actions .btn {
+      flex: 1 1 12rem;
+      min-width: 0;
+    }
   </style>
 </head>
 <body>
@@ -51,7 +60,7 @@
         <p class="text-muted">Ingresa las notas y porcentajes de cada evaluación. Las notas que dejes vacías se consideran pendientes; para simular que no entregaste una, ingresa 1.0. El resultado se actualiza automáticamente.</p>
         <div id="evaluacionesContainer"></div>
 
-        <div class="d-flex justify-content-between mb-3">
+        <div class="evaluation-actions mb-3">
           <button type="button" class="btn btn-success" onclick="agregarEvaluacion()">➕ Agregar evaluación</button>
           <button type="button" class="btn btn-danger" onclick="eliminarEvaluacion()">➖ Eliminar</button>
         </div>
@@ -264,13 +273,21 @@
       div.classList.add('row', 'g-2', 'mb-2');
       div.setAttribute('id', `eval-${contador}`);
       div.innerHTML = `
-        <div class="col-6">
+        <div class="col-12 col-sm-6">
           <label class="form-label visually-hidden" for="nota-${contador}">Nota o escenario de evaluación ${contador}</label>
-          <input type="tel" inputmode="decimal" id="nota-${contador}" class="form-control nota" placeholder="Nota / escenario ${contador}" oninput="validarNota(this); guardarDatos(); actualizarCalculos()" onblur="ajustarNota(this)">
+          <div class="input-group">
+            <input type="tel" inputmode="decimal" id="nota-${contador}" class="form-control nota" placeholder="Nota / escenario ${contador}" oninput="validarNota(this); guardarDatos(); actualizarCalculos()" onblur="ajustarNota(this)">
+            <button type="button" class="btn btn-outline-secondary" title="Limpiar nota" aria-label="Limpiar nota de la evaluación ${contador}" onclick="limpiarNota(${contador})">×</button>
+            <button type="button" class="btn btn-outline-secondary" title="Asignar nota 1.0" aria-label="Asignar nota 1.0 a la evaluación ${contador}" onclick="simularMinimo(${contador})">1.0</button>
+          </div>
         </div>
-        <div class="col-6">
+        <div class="col-12 col-sm-6">
           <label class="form-label visually-hidden" for="peso-${contador}">Porcentaje de evaluación ${contador}</label>
-          <input type="number" step="5" min="0" id="peso-${contador}" class="form-control peso" placeholder="Porcentaje ${contador}" value="${peso}" oninput="guardarDatos(); actualizarCalculos()">
+          <div class="input-group">
+            <button type="button" class="btn btn-outline-secondary btn-sm" title="Restar 5%" aria-label="Restar 5% a la evaluación ${contador}" onclick="ajustarPeso(${contador}, -5)">−</button>
+            <input type="number" step="5" min="0" id="peso-${contador}" class="form-control peso" placeholder="%" aria-label="Porcentaje de evaluación ${contador}" value="${peso}" oninput="guardarDatos(); actualizarCalculos()">
+            <button type="button" class="btn btn-outline-secondary btn-sm" title="Sumar 5%" aria-label="Sumar 5% a la evaluación ${contador}" onclick="ajustarPeso(${contador}, 5)">+</button>
+          </div>
         </div>`;
       container.appendChild(div);
       if (nota !== undefined && nota !== null) div.querySelector('.nota').value = nota;
@@ -278,6 +295,33 @@
         guardarDatos();
         actualizarCalculos();
       }
+    }
+
+    function simularMinimo(id) {
+      const evaluacion = document.getElementById(`eval-${id}`);
+      if (!evaluacion) return;
+      evaluacion.querySelector('.nota').value = '1.0';
+      guardarDatos();
+      actualizarCalculos();
+    }
+
+    function limpiarNota(id) {
+      const evaluacion = document.getElementById(`eval-${id}`);
+      if (!evaluacion) return;
+      const input = evaluacion.querySelector('.nota');
+      input.value = '';
+      input.focus();
+      guardarDatos();
+      actualizarCalculos();
+    }
+
+    function ajustarPeso(id, cambio) {
+      const input = document.getElementById(`peso-${id}`);
+      if (!input) return;
+      const pesoActual = input.value === '' ? 0 : Number(input.value);
+      input.value = String(Math.max(0, pesoActual + cambio));
+      guardarDatos();
+      actualizarCalculos();
     }
 
     // --- Eliminar la última evaluación ---
@@ -354,8 +398,9 @@ function ajustarNota(input) {
       if (!Number.isFinite(notaObjetivo) || notaObjetivo < 1 || notaObjetivo > 7) {
         return { error: 'La nota objetivo debe estar entre 1.0 y 7.0.' };
       }
-      if (Math.abs(pesoTotal - 100) > 0.01) {
-        return { error: `Los porcentajes suman ${pesoTotal.toFixed(2)}%. Deben sumar 100%.` };
+      if (pesoTotal !== 100) {
+        const totalFormateado = pesoTotal.toLocaleString('es-CL', { maximumFractionDigits: 10 });
+        return { error: `Los porcentajes asignados suman ${totalFormateado}%. Deben sumar exactamente 100%.` };
       }
       return { evaluaciones, notaObjetivo };
     }
@@ -378,9 +423,12 @@ function ajustarNota(input) {
 
       let sumaNotas = 0;
       let pesoPendiente = 0;
+      let evaluacionesPendientes = 0;
       datos.evaluaciones.forEach(evaluacion => {
-        if (evaluacion.nota === null) pesoPendiente += evaluacion.peso;
-        else sumaNotas += evaluacion.nota * evaluacion.peso;
+        if (evaluacion.nota === null) {
+          pesoPendiente += evaluacion.peso;
+          evaluacionesPendientes++;
+        } else sumaNotas += evaluacion.nota * evaluacion.peso;
       });
 
       if (pesoPendiente === 0) {
@@ -402,7 +450,9 @@ function ajustarNota(input) {
         resultado,
         detalle,
         (datos.notaObjetivo - sumaNotas) / pesoPendiente,
-        'en promedio en cada evaluación pendiente'
+        evaluacionesPendientes === 1
+          ? 'en la evaluación pendiente'
+          : `en promedio en las ${evaluacionesPendientes} evaluaciones pendientes`
       );
       guardarDatos();
     }
@@ -410,12 +460,14 @@ function ajustarNota(input) {
     function mostrarNotaNecesaria(resultado, detalle, notaNecesaria, contexto) {
       if (notaNecesaria > 7) {
         actualizarResultado(resultado, detalle, `Necesitarías un ${notaNecesaria.toFixed(2)}. No es posible alcanzar la nota objetivo con una nota máxima de 7.0.`, 'text-danger');
+        detalle.textContent = `Necesitarías esa nota ${contexto}, pero supera la nota máxima de 7.0.`;
       } else if (notaNecesaria <= 1) {
         actualizarResultado(resultado, detalle, 'Con un 1.0 ya alcanzas la nota objetivo. 🎉', 'text-success');
+        detalle.textContent = `Con un 1.0 ${contexto} ya alcanzas la nota objetivo.`;
       } else {
         actualizarResultado(resultado, detalle, `Necesitas al menos un ${notaNecesaria.toFixed(2)}. 💪`, 'text-success');
+        detalle.textContent = `Cálculo ${contexto}.`;
       }
-      detalle.textContent = `Cálculo ${contexto}.`;
     }
 
   </script>
